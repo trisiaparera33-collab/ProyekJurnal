@@ -1,0 +1,74 @@
+<!-- My Aesthetic Journal — browser-based personal journal app, no backend. Data stored in localStorage. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Everyday, soulful notes</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Hero Header -->
+  <header class="hero-header">
+    <div class="hero-img-wrap">
+      <img src="Wanita dan sunflower.jpg.jpg" alt="Woman with sunflowers" class="hero-img" />
+    </div>
+    <div class="hero-text">
+      <h1>🦋 Everyday, soulful notes 🦋</h1>
+      <p class="subtitle">small notes for a big soul</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- Form + Decoration Side by Side -->
+    <div class="form-row">
+      <section class="form-section">
+        <h2>Write Today</h2>
+        <form id="journal-form">
+          <input type="text" id="title" placeholder="Journal title..." required />
+          <input type="date" id="date" required />
+          <div class="mood-picker">
+            <span>Today's mood:</span>
+            <label><input type="radio" name="mood" value="😊 Happy" required /> 😊 Happy</label>
+            <label><input type="radio" name="mood" value="😢 Sad" /> 😢 Sad</label>
+            <label><input type="radio" name="mood" value="☕ Calm" /> ☕ Calm</label>
+            <label><input type="radio" name="mood" value="🤯 Stressed" /> 🤯 Stressed</label>
+          </div>
+          <textarea id="content" placeholder="Tell me about your day..." rows="5" required></textarea>
+          <button type="submit">Save Journal</button>
+        </form>
+      </section>
+
+      <!-- Decoration Image -->
+      <aside class="form-deco">
+        <img src="Wanita Belajar.jpg.jpg" alt="Woman studying" class="deco-img" />
+      </aside>
+    </div>
+
+    <!-- Journal List -->
+    <section class="list-section">
+      <h2>Journal History</h2>
+      <div id="journal-list"></div>
+    </section>
+  </main>
+
+  <!-- Modal Detail -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="close-btn" id="close-modal">✕</button>
+      <p class="modal-mood" id="modal-mood"></p>
+      <h2 id="modal-title"></h2>
+      <p class="modal-date" id="modal-date"></p>
+      <p id="modal-content"></p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>🌻📚 Tidak ada kata akhir untuk belajar 📚🌻</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

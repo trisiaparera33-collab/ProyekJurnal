@@ -1,0 +1,13 @@
+# Struktur Database (schema.json)
+
+```json
+{
+  "journals": {
+    "id": "string (primary key)",
+    "title": "string (wajib diisi)",
+    "date": "date",
+    "mood": "string",
+    "content": "text",
+    "created_at": "timestamp"
+  }
+}
