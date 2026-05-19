@@ -119,11 +119,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// ── Load semua data saat login ────────────────────
+// ── Load data — tab aktif dulu, sisanya background ──
 async function loadAll() {
-  showLoading(true);
-  await Promise.all([renderJournal(), renderMoodStats(), renderTodo(), renderPlan(), renderHabit()]);
-  showLoading(false);
+  // Render journal tab dulu (tab aktif), langsung tampil
+  renderJournal();
+  renderMoodStats();
+  // Sisanya load di background tanpa blokir UI
+  renderTodo();
+  renderPlan();
+  renderHabit();
 }
 
 // ════════════════════════════════════════════════
@@ -134,10 +138,15 @@ const journalList   = document.getElementById('journal-list');
 const modal         = document.getElementById('modal');
 const journalSearch = document.getElementById('journal-search');
 
+// Cache data journal di memori — tidak perlu fetch ulang untuk modal
+let journalCache = [];
+
 async function renderMoodStats() {
-  const { data: journals } = await sb.from('journals').select('mood').eq('user_id', currentUser.id);
   const statsEl = document.getElementById('mood-stats');
-  if (!journals || !journals.length) {
+  // Pakai cache kalau sudah ada
+  const journals = journalCache.length ? journalCache
+    : (await sb.from('journals').select('mood').eq('user_id', currentUser.id)).data || [];
+  if (!journals.length) {
     statsEl.innerHTML = '<span class="mood-stats-empty">Write your first journal to see mood stats ✦</span>';
     return;
   }
@@ -155,11 +164,16 @@ async function renderMoodStats() {
 }
 
 async function renderJournal(query = '') {
-  let q = sb.from('journals').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
-  const { data: journals, error } = await q;
+  // Skeleton sementara data dimuat
+  if (!journalCache.length) {
+    journalList.innerHTML = '<p class="empty-state" style="opacity:0.5">Loading... ✦</p>';
+  }
+  const { data: journals, error } = await sb.from('journals').select('*')
+    .eq('user_id', currentUser.id).order('created_at', { ascending: false });
   if (error) { journalList.innerHTML = '<p class="empty-state">Failed to load journals.</p>'; return; }
 
-  let list = journals || [];
+  journalCache = journals || [];
+  let list = journalCache;
   if (query.trim()) {
     const lq = query.toLowerCase();
     list = list.filter(j =>
@@ -198,7 +212,9 @@ journalForm.addEventListener('submit', async e => {
   e.preventDefault();
   const mood = journalForm.querySelector('input[name="mood"]:checked');
   if (!mood) return;
-  showLoading(true);
+  const btn = journalForm.querySelector('button[type="submit"]');
+  btn.textContent = '⏳ Saving...';
+  btn.disabled = true;
   const { error } = await sb.from('journals').insert({
     user_id: currentUser.id,
     title:   document.getElementById('title').value.trim(),
@@ -206,11 +222,13 @@ journalForm.addEventListener('submit', async e => {
     mood:    mood.value,
     content: document.getElementById('content').value.trim(),
   });
-  showLoading(false);
+  btn.textContent = '💾 Save Journal';
+  btn.disabled = false;
   if (error) { alert('Failed to save journal: ' + error.message); return; }
   journalForm.reset();
+  journalCache = []; // reset cache
   await renderJournal();
-  await renderMoodStats();
+  renderMoodStats();
 });
 
 journalList.addEventListener('click', async e => {
@@ -218,11 +236,12 @@ journalList.addEventListener('click', async e => {
   if (deleteBtn) {
     e.stopPropagation();
     if (!confirm('Delete this journal entry?')) return;
-    showLoading(true);
+    deleteBtn.textContent = '⏳';
+    deleteBtn.disabled = true;
     await sb.from('journals').delete().eq('id', deleteBtn.dataset.id).eq('user_id', currentUser.id);
-    showLoading(false);
+    journalCache = [];
     await renderJournal(journalSearch.value);
-    await renderMoodStats();
+    renderMoodStats();
     return;
   }
   const card = e.target.closest('.card');
@@ -230,7 +249,8 @@ journalList.addEventListener('click', async e => {
 });
 
 async function openModal(id) {
-  const { data } = await sb.from('journals').select('*').eq('id', id).single();
+  // Pakai cache dulu, tidak perlu fetch ke database
+  const data = journalCache.find(j => j.id === id);
   if (!data) return;
   document.getElementById('modal-mood').textContent    = data.mood.split(' ')[0];
   document.getElementById('modal-title').textContent   = data.title;
@@ -344,9 +364,12 @@ todoForm.addEventListener('submit', async e => {
   const text     = document.getElementById('todo-input').value.trim();
   const priority = document.getElementById('todo-priority').value;
   if (!text) return;
-  showLoading(true);
+  const btn = todoForm.querySelector('button[type="submit"]');
+  btn.textContent = '⏳';
+  btn.disabled = true;
   await sb.from('todos').insert({ user_id: currentUser.id, text, priority, done: false });
-  showLoading(false);
+  btn.textContent = 'Add';
+  btn.disabled = false;
   todoForm.reset();
   await renderTodo();
 });
@@ -357,17 +380,15 @@ todoList.addEventListener('click', async e => {
   if (el.dataset.action === 'toggle') {
     const { data } = await sb.from('todos').select('done').eq('id', el.dataset.id).single();
     if (data) {
-      showLoading(true);
       await sb.from('todos').update({ done: !data.done }).eq('id', el.dataset.id).eq('user_id', currentUser.id);
-      showLoading(false);
       await renderTodo();
     }
   }
   if (el.dataset.action === 'delete') {
     if (!confirm('Delete this task?')) return;
-    showLoading(true);
+    el.textContent = '⏳';
+    el.disabled = true;
     await sb.from('todos').delete().eq('id', el.dataset.id).eq('user_id', currentUser.id);
-    showLoading(false);
     await renderTodo();
   }
 });
@@ -431,7 +452,9 @@ async function renderPlan() {
 
 planForm.addEventListener('submit', async e => {
   e.preventDefault();
-  showLoading(true);
+  const btn = planForm.querySelector('button[type="submit"]');
+  btn.textContent = '⏳';
+  btn.disabled = true;
   await sb.from('plans').insert({
     user_id:     currentUser.id,
     title:       document.getElementById('plan-title').value.trim(),
@@ -441,7 +464,8 @@ planForm.addEventListener('submit', async e => {
     progress:    0,
     done:        false,
   });
-  showLoading(false);
+  btn.textContent = 'Add Goal';
+  btn.disabled = false;
   planForm.reset();
   await renderPlan();
 });
@@ -452,17 +476,15 @@ planList.addEventListener('click', async e => {
   if (el.dataset.action === 'toggle-plan') {
     const { data } = await sb.from('plans').select('done').eq('id', el.dataset.id).single();
     if (data) {
-      showLoading(true);
       await sb.from('plans').update({ done: !data.done }).eq('id', el.dataset.id).eq('user_id', currentUser.id);
-      showLoading(false);
       await renderPlan();
     }
   }
   if (el.dataset.action === 'delete-plan') {
     if (!confirm('Delete this goal?')) return;
-    showLoading(true);
+    el.textContent = '⏳';
+    el.disabled = true;
     await sb.from('plans').delete().eq('id', el.dataset.id).eq('user_id', currentUser.id);
-    showLoading(false);
     await renderPlan();
   }
 });
@@ -562,9 +584,12 @@ habitForm.addEventListener('submit', async e => {
   const name = document.getElementById('habit-input').value.trim();
   const icon = document.getElementById('habit-icon').value;
   if (!name) return;
-  showLoading(true);
+  const btn = habitForm.querySelector('button[type="submit"]');
+  btn.textContent = '⏳';
+  btn.disabled = true;
   await sb.from('habits').insert({ user_id: currentUser.id, name, icon, log: [] });
-  showLoading(false);
+  btn.textContent = 'Add';
+  btn.disabled = false;
   habitForm.reset();
   await renderHabit();
 });
@@ -577,17 +602,18 @@ habitList.addEventListener('click', async e => {
     const date    = el.dataset.date;
     const log     = JSON.parse(el.dataset.log || '[]');
     const newLog  = log.includes(date) ? log.filter(d => d !== date) : [...log, date];
-    showLoading(true);
-    await sb.from('habits').update({ log: newLog }).eq('id', el.dataset.id).eq('user_id', currentUser.id);
-    showLoading(false);
-    await renderHabit();
+    // Optimistic UI — update tampilan dulu, baru sync ke DB
+    el.classList.toggle('done');
+    el.dataset.log = JSON.stringify(newLog);
+    el.innerHTML = `<span class="day-name">${el.querySelector('.day-name').textContent}</span>${newLog.includes(date) ? '✓' : new Date(date + 'T00:00:00').getDate()}`;
+    sb.from('habits').update({ log: newLog }).eq('id', el.dataset.id).eq('user_id', currentUser.id);
   }
 
   if (el.dataset.action === 'delete-habit') {
     if (!confirm('Delete this habit?')) return;
-    showLoading(true);
+    el.textContent = '⏳';
+    el.disabled = true;
     await sb.from('habits').delete().eq('id', el.dataset.id).eq('user_id', currentUser.id);
-    showLoading(false);
     await renderHabit();
   }
 });
