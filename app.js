@@ -1,15 +1,15 @@
 // ═══════════════════════════════════════════════
 //  My Aesthetic Journal — app.js
-//  Features: Journal, To-Do, Life Planning, Habit Tracker
-//  Storage: localStorage only
+//  Supabase + Auth + Journal + Todo + Planning + Habit
 // ═══════════════════════════════════════════════
 
-const KEYS = {
-  journal: 'my_aesthetic_journal',
-  todo:    'my_aesthetic_todo',
-  plan:    'my_aesthetic_plan',
-  habit:   'my_aesthetic_habit',
-};
+// ── Supabase Config ──────────────────────────────
+const SUPABASE_URL = 'https://umjurimjzkoondlzurwn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtanVyaW1qemtvb25kbHp1cnduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxNTExNDYsImV4cCI6MjA5NDcyNzE0Nn0.y1tjMavekMktPjtiThCSqUGrMxHvpHW7GmsO3hZ6u9o';
+
+// Supabase JS v2 via CDN (loaded inline below)
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── Helpers ──────────────────────────────────────
 function escHtml(str) {
@@ -25,13 +25,89 @@ function formatDate(dateStr) {
   });
 }
 
-function loadData(key) {
-  return JSON.parse(localStorage.getItem(key) || '[]');
+function showLoading(show) {
+  document.getElementById('loading').classList.toggle('hidden', !show);
 }
 
-function saveData(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
+function showEl(id) { document.getElementById(id).classList.remove('hidden'); }
+function hideEl(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════
+let currentUser = null;
+
+// Tab switch login/register
+document.querySelectorAll('.auth-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.auth-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (btn.dataset.auth === 'login') {
+      showEl('login-form'); hideEl('register-form');
+    } else {
+      hideEl('login-form'); showEl('register-form');
+    }
+  });
+});
+
+// Login
+document.getElementById('login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  errEl.classList.add('hidden');
+  showLoading(true);
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  showLoading(false);
+  if (error) {
+    errEl.textContent = 'Email atau password salah. Coba lagi.';
+    errEl.classList.remove('hidden');
+  }
+});
+
+// Register
+document.getElementById('register-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const errEl    = document.getElementById('reg-error');
+  const okEl     = document.getElementById('reg-success');
+  errEl.classList.add('hidden');
+  okEl.classList.add('hidden');
+  showLoading(true);
+  const { error } = await sb.auth.signUp({ email, password });
+  showLoading(false);
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.classList.remove('hidden');
+  } else {
+    okEl.textContent = 'Akun berhasil dibuat! Cek email kamu untuk konfirmasi, lalu masuk.';
+    okEl.classList.remove('hidden');
+    document.getElementById('register-form').reset();
+  }
+});
+
+// Logout
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  if (!confirm('Yakin mau keluar?')) return;
+  await sb.auth.signOut();
+});
+
+// Auth state listener — ini yang mengontrol tampilan app vs login
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session && session.user) {
+    currentUser = session.user;
+    document.getElementById('user-email-display').textContent = currentUser.email;
+    hideEl('auth-page');
+    showEl('app');
+    await loadAll();
+  } else {
+    currentUser = null;
+    showEl('auth-page');
+    hideEl('app');
+  }
+});
 
 // ── Tab Navigation ────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -43,27 +119,30 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
+// ── Load semua data saat login ────────────────────
+async function loadAll() {
+  showLoading(true);
+  await Promise.all([renderJournal(), renderMoodStats(), renderTodo(), renderPlan(), renderHabit()]);
+  showLoading(false);
+}
+
 // ════════════════════════════════════════════════
 //  JURNAL
 // ════════════════════════════════════════════════
-const journalForm = document.getElementById('journal-form');
-const journalList = document.getElementById('journal-list');
-const modal       = document.getElementById('modal');
+const journalForm   = document.getElementById('journal-form');
+const journalList   = document.getElementById('journal-list');
+const modal         = document.getElementById('modal');
 const journalSearch = document.getElementById('journal-search');
 
-// ── Mood Stats ───────────────────────────────────
-function renderMoodStats() {
-  const journals = loadData(KEYS.journal);
+async function renderMoodStats() {
+  const { data: journals } = await sb.from('journals').select('mood').eq('user_id', currentUser.id);
   const statsEl = document.getElementById('mood-stats');
-  if (!journals.length) {
+  if (!journals || !journals.length) {
     statsEl.innerHTML = '<span class="mood-stats-empty">Tulis jurnal pertamamu untuk melihat statistik mood ✦</span>';
     return;
   }
   const counts = {};
-  journals.forEach(j => {
-    const mood = j.mood || '';
-    counts[mood] = (counts[mood] || 0) + 1;
-  });
+  journals.forEach(j => { counts[j.mood] = (counts[j.mood] || 0) + 1; });
   statsEl.innerHTML = Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .map(([mood, count]) => `
@@ -75,187 +154,177 @@ function renderMoodStats() {
     `).join('');
 }
 
-// ── Render Journal ────────────────────────────────
-function renderJournal(query = '') {
-  let journals = loadData(KEYS.journal);
+async function renderJournal(query = '') {
+  let q = sb.from('journals').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  const { data: journals, error } = await q;
+  if (error) { journalList.innerHTML = '<p class="empty-state">Gagal memuat jurnal.</p>'; return; }
+
+  let list = journals || [];
   if (query.trim()) {
-    const q = query.toLowerCase();
-    journals = journals.filter(j =>
-      j.title.toLowerCase().includes(q) ||
-      j.content.toLowerCase().includes(q) ||
-      j.mood.toLowerCase().includes(q)
+    const lq = query.toLowerCase();
+    list = list.filter(j =>
+      j.title.toLowerCase().includes(lq) ||
+      j.content.toLowerCase().includes(lq) ||
+      j.mood.toLowerCase().includes(lq)
     );
   }
-  if (!journals.length) {
+
+  if (!list.length) {
     journalList.innerHTML = query
       ? '<p class="empty-state">Tidak ada jurnal yang cocok ✦</p>'
       : '<p class="empty-state">Belum ada jurnal. Mulai tulis hari ini ✦</p>';
     return;
   }
-  journalList.innerHTML = journals
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .map(j => {
-      const preview = query.trim()
-        ? highlightText(escHtml(j.content.slice(0, 80)) + (j.content.length > 80 ? '…' : ''), query)
-        : escHtml(j.content.slice(0, 80)) + (j.content.length > 80 ? '…' : '');
-      const titleDisplay = query.trim()
-        ? highlightText(escHtml(j.title), query)
-        : escHtml(j.title);
-      return `
-        <div class="card" data-id="${j.id}">
-          <div class="card-mood">${j.mood.split(' ')[0]}</div>
-          <div class="card-title">${titleDisplay}</div>
-          <div class="card-date">${formatDate(j.date)}</div>
-          <div class="card-preview">${preview}</div>
-          <div class="card-footer">
-            <button class="delete-btn" data-id="${j.id}">🗑 Hapus</button>
-          </div>
+
+  journalList.innerHTML = list.map(j => {
+    const preview = escHtml(j.content.slice(0, 80)) + (j.content.length > 80 ? '…' : '');
+    return `
+      <div class="card" data-id="${j.id}">
+        <div class="card-mood">${j.mood.split(' ')[0]}</div>
+        <div class="card-title">${escHtml(j.title)}</div>
+        <div class="card-date">${formatDate(j.date)}</div>
+        <div class="card-preview">${preview}</div>
+        <div class="card-footer">
+          <button class="delete-btn" data-id="${j.id}">🗑 Hapus</button>
         </div>
-      `;
-    }).join('');
+      </div>
+    `;
+  }).join('');
 }
 
-function highlightText(text, query) {
-  const q = escHtml(query.trim());
-  if (!q) return text;
-  const regex = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-  return text.replace(regex, '<mark style="background:#f0ddd0;border-radius:3px;padding:0 2px">$1</mark>');
-}
-
-// ── Search ────────────────────────────────────────
 journalSearch.addEventListener('input', () => renderJournal(journalSearch.value));
 
-// ── Export ────────────────────────────────────────
-document.getElementById('btn-export').addEventListener('click', () => {
-  const allData = {
-    exported_at: new Date().toISOString(),
-    journal: loadData(KEYS.journal),
-    todo:    loadData(KEYS.todo),
-    plan:    loadData(KEYS.plan),
-    habit:   loadData(KEYS.habit),
-  };
-  const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `my-journal-backup-${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-// ── Import ────────────────────────────────────────
-document.getElementById('import-file').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      if (!confirm('Import akan menggabungkan data lama dengan data baru. Lanjutkan?')) return;
-      if (Array.isArray(data.journal)) {
-        const existing = loadData(KEYS.journal);
-        const existingIds = new Set(existing.map(j => j.id));
-        const merged = [...existing, ...data.journal.filter(j => !existingIds.has(j.id))];
-        saveData(KEYS.journal, merged);
-      }
-      if (Array.isArray(data.todo)) {
-        const existing = loadData(KEYS.todo);
-        const existingIds = new Set(existing.map(t => t.id));
-        saveData(KEYS.todo, [...existing, ...data.todo.filter(t => !existingIds.has(t.id))]);
-      }
-      if (Array.isArray(data.plan)) {
-        const existing = loadData(KEYS.plan);
-        const existingIds = new Set(existing.map(p => p.id));
-        saveData(KEYS.plan, [...existing, ...data.plan.filter(p => !existingIds.has(p.id))]);
-      }
-      if (Array.isArray(data.habit)) {
-        const existing = loadData(KEYS.habit);
-        const existingIds = new Set(existing.map(h => h.id));
-        saveData(KEYS.habit, [...existing, ...data.habit.filter(h => !existingIds.has(h.id))]);
-      }
-      renderJournal();
-      renderMoodStats();
-      renderTodo();
-      renderPlan();
-      renderHabit();
-      alert('Import berhasil ✦');
-    } catch {
-      alert('File tidak valid. Pastikan file adalah backup dari jurnal ini.');
-    }
-    e.target.value = '';
-  };
-  reader.readAsText(file);
-});
-
-journalForm.addEventListener('submit', e => {
+journalForm.addEventListener('submit', async e => {
   e.preventDefault();
   const mood = journalForm.querySelector('input[name="mood"]:checked');
   if (!mood) return;
-  const entry = {
-    id: crypto.randomUUID(),
-    title: document.getElementById('title').value.trim(),
-    date: document.getElementById('date').value,
-    mood: mood.value,
+  showLoading(true);
+  const { error } = await sb.from('journals').insert({
+    user_id: currentUser.id,
+    title:   document.getElementById('title').value.trim(),
+    date:    document.getElementById('date').value,
+    mood:    mood.value,
     content: document.getElementById('content').value.trim(),
-    created_at: new Date().toISOString()
-  };
-  const journals = loadData(KEYS.journal);
-  journals.push(entry);
-  saveData(KEYS.journal, journals);
+  });
+  showLoading(false);
+  if (error) { alert('Gagal menyimpan jurnal: ' + error.message); return; }
   journalForm.reset();
-  renderJournal();
-  renderMoodStats();
+  await renderJournal();
+  await renderMoodStats();
 });
 
-journalList.addEventListener('click', e => {
+journalList.addEventListener('click', async e => {
   const deleteBtn = e.target.closest('.delete-btn');
   if (deleteBtn) {
     e.stopPropagation();
     if (!confirm('Hapus jurnal ini?')) return;
-    saveData(KEYS.journal, loadData(KEYS.journal).filter(j => j.id !== deleteBtn.dataset.id));
-    renderJournal(journalSearch.value);
-    renderMoodStats();
+    showLoading(true);
+    await sb.from('journals').delete().eq('id', deleteBtn.dataset.id).eq('user_id', currentUser.id);
+    showLoading(false);
+    await renderJournal(journalSearch.value);
+    await renderMoodStats();
     return;
   }
   const card = e.target.closest('.card');
   if (card) openModal(card.dataset.id);
 });
 
-function openModal(id) {
-  const j = loadData(KEYS.journal).find(j => j.id === id);
-  if (!j) return;
-  document.getElementById('modal-mood').textContent = j.mood.split(' ')[0];
-  document.getElementById('modal-title').textContent = j.title;
-  document.getElementById('modal-date').textContent = formatDate(j.date);
-  document.getElementById('modal-content').textContent = j.content;
+async function openModal(id) {
+  const { data } = await sb.from('journals').select('*').eq('id', id).single();
+  if (!data) return;
+  document.getElementById('modal-mood').textContent    = data.mood.split(' ')[0];
+  document.getElementById('modal-title').textContent   = data.title;
+  document.getElementById('modal-date').textContent    = formatDate(data.date);
+  document.getElementById('modal-content').textContent = data.content;
   modal.classList.remove('hidden');
 }
 
 document.getElementById('close-modal').addEventListener('click', () => modal.classList.add('hidden'));
 modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
 
+// ── Export / Import ───────────────────────────────
+document.getElementById('btn-export').addEventListener('click', async () => {
+  showLoading(true);
+  const [j, t, p, h] = await Promise.all([
+    sb.from('journals').select('*').eq('user_id', currentUser.id),
+    sb.from('todos').select('*').eq('user_id', currentUser.id),
+    sb.from('plans').select('*').eq('user_id', currentUser.id),
+    sb.from('habits').select('*').eq('user_id', currentUser.id),
+  ]);
+  showLoading(false);
+  const allData = {
+    exported_at: new Date().toISOString(),
+    journal: j.data || [], todo: t.data || [],
+    plan: p.data || [],    habit: h.data || [],
+  };
+  const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `my-journal-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('import-file').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!confirm('Import akan menambahkan data dari file backup. Lanjutkan?')) return;
+      showLoading(true);
+      if (Array.isArray(data.journal) && data.journal.length) {
+        const rows = data.journal.map(j => ({ ...j, user_id: currentUser.id, id: undefined }));
+        await sb.from('journals').insert(rows);
+      }
+      if (Array.isArray(data.todo) && data.todo.length) {
+        const rows = data.todo.map(t => ({ ...t, user_id: currentUser.id, id: undefined }));
+        await sb.from('todos').insert(rows);
+      }
+      if (Array.isArray(data.plan) && data.plan.length) {
+        const rows = data.plan.map(p => ({ ...p, user_id: currentUser.id, id: undefined, description: p.desc || p.description }));
+        await sb.from('plans').insert(rows);
+      }
+      if (Array.isArray(data.habit) && data.habit.length) {
+        const rows = data.habit.map(h => ({ ...h, user_id: currentUser.id, id: undefined }));
+        await sb.from('habits').insert(rows);
+      }
+      await loadAll();
+      showLoading(false);
+      alert('Import berhasil ✦');
+    } catch {
+      showLoading(false);
+      alert('File tidak valid.');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
 // ════════════════════════════════════════════════
 //  TO-DO LIST
 // ════════════════════════════════════════════════
-const todoForm   = document.getElementById('todo-form');
-const todoList   = document.getElementById('todo-list');
-let todoFilter   = 'semua';
+const todoForm = document.getElementById('todo-form');
+const todoList = document.getElementById('todo-list');
+let todoFilter = 'semua';
 
-function renderTodo() {
-  let todos = loadData(KEYS.todo);
-  if (todoFilter === 'aktif')   todos = todos.filter(t => !t.done);
-  if (todoFilter === 'selesai') todos = todos.filter(t => t.done);
+async function renderTodo() {
+  let q = sb.from('todos').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true });
+  if (todoFilter === 'aktif')   q = q.eq('done', false);
+  if (todoFilter === 'selesai') q = q.eq('done', true);
+  const { data: todos } = await q;
+  const list = todos || [];
 
-  if (!todos.length) {
+  if (!list.length) {
     todoList.innerHTML = '<p class="empty-state">Tidak ada tugas di sini ✦</p>';
     return;
   }
 
-  todoList.innerHTML = todos
-    .sort((a, b) => {
-      const order = { tinggi: 0, sedang: 1, rendah: 2 };
-      return (order[a.priority] ?? 1) - (order[b.priority] ?? 1);
-    })
+  const order = { tinggi: 0, sedang: 1, rendah: 2 };
+  todoList.innerHTML = list
+    .sort((a, b) => (order[a.priority] ?? 1) - (order[b.priority] ?? 1))
     .map(t => `
       <div class="todo-item ${t.done ? 'selesai' : ''}" data-id="${t.id}">
         <div class="todo-check ${t.done ? 'checked' : ''}" data-action="toggle" data-id="${t.id}">
@@ -270,41 +339,45 @@ function renderTodo() {
     `).join('');
 }
 
-todoForm.addEventListener('submit', e => {
+todoForm.addEventListener('submit', async e => {
   e.preventDefault();
-  const text = document.getElementById('todo-input').value.trim();
+  const text     = document.getElementById('todo-input').value.trim();
   const priority = document.getElementById('todo-priority').value;
   if (!text) return;
-  const todos = loadData(KEYS.todo);
-  todos.push({ id: crypto.randomUUID(), text, priority, done: false, created_at: new Date().toISOString() });
-  saveData(KEYS.todo, todos);
+  showLoading(true);
+  await sb.from('todos').insert({ user_id: currentUser.id, text, priority, done: false });
+  showLoading(false);
   todoForm.reset();
-  renderTodo();
+  await renderTodo();
 });
 
-todoList.addEventListener('click', e => {
+todoList.addEventListener('click', async e => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
-  const todos = loadData(KEYS.todo);
   if (el.dataset.action === 'toggle') {
-    const idx = todos.findIndex(t => t.id === el.dataset.id);
-    if (idx !== -1) todos[idx].done = !todos[idx].done;
-    saveData(KEYS.todo, todos);
-    renderTodo();
+    const { data } = await sb.from('todos').select('done').eq('id', el.dataset.id).single();
+    if (data) {
+      showLoading(true);
+      await sb.from('todos').update({ done: !data.done }).eq('id', el.dataset.id).eq('user_id', currentUser.id);
+      showLoading(false);
+      await renderTodo();
+    }
   }
   if (el.dataset.action === 'delete') {
     if (!confirm('Hapus tugas ini?')) return;
-    saveData(KEYS.todo, todos.filter(t => t.id !== el.dataset.id));
-    renderTodo();
+    showLoading(true);
+    await sb.from('todos').delete().eq('id', el.dataset.id).eq('user_id', currentUser.id);
+    showLoading(false);
+    await renderTodo();
   }
 });
 
 document.querySelectorAll('.filter-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     todoFilter = btn.dataset.filter;
-    renderTodo();
+    await renderTodo();
   });
 });
 
@@ -319,93 +392,91 @@ const CATEGORY_ICONS = {
   pendidikan: '📚', hubungan: '❤️', hobi: '🎨', lainnya: '✨'
 };
 
-function renderPlan() {
-  const plans = loadData(KEYS.plan);
-  if (!plans.length) {
+async function renderPlan() {
+  const { data: plans } = await sb.from('plans').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  const list = plans || [];
+
+  if (!list.length) {
     planList.innerHTML = '<p class="empty-state" style="grid-column:1/-1">Belum ada goal. Yuk mulai rencanakan hidupmu ✦</p>';
     return;
   }
-  planList.innerHTML = plans
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .map(p => `
-      <div class="plan-card" data-id="${p.id}">
-        <div class="plan-header">
-          <span class="plan-category">${CATEGORY_ICONS[p.category] || '✨'} ${escHtml(p.category)}</span>
-          <button class="delete-btn" data-action="delete-plan" data-id="${p.id}">🗑</button>
-        </div>
-        <div class="plan-title">${escHtml(p.title)}</div>
-        ${p.desc ? `<div class="plan-desc">${escHtml(p.desc)}</div>` : ''}
-        <div class="plan-timeline">⏳ ${escHtml(p.timeline)}</div>
-        <div class="plan-progress-wrap">
-          <div class="plan-progress-label">
-            <span>Progress</span>
-            <span>${p.progress || 0}%</span>
-          </div>
-          <div class="plan-progress-bar">
-            <div class="plan-progress-fill" style="width:${p.progress || 0}%"></div>
-          </div>
-          <input type="range" class="plan-progress-input" min="0" max="100" value="${p.progress || 0}"
-            data-action="progress" data-id="${p.id}" />
-        </div>
-        <div class="plan-footer">
-          <button class="plan-status ${p.done ? 'selesai' : ''}" data-action="toggle-plan" data-id="${p.id}">
-            ${p.done ? '✅ Selesai' : '⬜ Tandai Selesai'}
-          </button>
-        </div>
+
+  planList.innerHTML = list.map(p => `
+    <div class="plan-card" data-id="${p.id}">
+      <div class="plan-header">
+        <span class="plan-category">${CATEGORY_ICONS[p.category] || '✨'} ${escHtml(p.category)}</span>
+        <button class="delete-btn" data-action="delete-plan" data-id="${p.id}">🗑</button>
       </div>
-    `).join('');
+      <div class="plan-title">${escHtml(p.title)}</div>
+      ${p.description ? `<div class="plan-desc">${escHtml(p.description)}</div>` : ''}
+      <div class="plan-timeline">⏳ ${escHtml(p.timeline)}</div>
+      <div class="plan-progress-wrap">
+        <div class="plan-progress-label">
+          <span>Progress</span>
+          <span>${p.progress || 0}%</span>
+        </div>
+        <div class="plan-progress-bar">
+          <div class="plan-progress-fill" style="width:${p.progress || 0}%"></div>
+        </div>
+        <input type="range" class="plan-progress-input" min="0" max="100" value="${p.progress || 0}"
+          data-action="progress" data-id="${p.id}" />
+      </div>
+      <div class="plan-footer">
+        <button class="plan-status ${p.done ? 'selesai' : ''}" data-action="toggle-plan" data-id="${p.id}">
+          ${p.done ? '✅ Selesai' : '⬜ Tandai Selesai'}
+        </button>
+      </div>
+    </div>
+  `).join('');
 }
 
-planForm.addEventListener('submit', e => {
+planForm.addEventListener('submit', async e => {
   e.preventDefault();
-  const plan = {
-    id: crypto.randomUUID(),
-    title: document.getElementById('plan-title').value.trim(),
-    desc: document.getElementById('plan-desc').value.trim(),
-    category: document.getElementById('plan-category').value,
-    timeline: document.getElementById('plan-timeline').value,
-    progress: 0,
-    done: false,
-    created_at: new Date().toISOString()
-  };
-  const plans = loadData(KEYS.plan);
-  plans.push(plan);
-  saveData(KEYS.plan, plans);
+  showLoading(true);
+  await sb.from('plans').insert({
+    user_id:     currentUser.id,
+    title:       document.getElementById('plan-title').value.trim(),
+    description: document.getElementById('plan-desc').value.trim(),
+    category:    document.getElementById('plan-category').value,
+    timeline:    document.getElementById('plan-timeline').value,
+    progress:    0,
+    done:        false,
+  });
+  showLoading(false);
   planForm.reset();
-  renderPlan();
+  await renderPlan();
 });
 
-planList.addEventListener('click', e => {
+planList.addEventListener('click', async e => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
-  const plans = loadData(KEYS.plan);
   if (el.dataset.action === 'toggle-plan') {
-    const idx = plans.findIndex(p => p.id === el.dataset.id);
-    if (idx !== -1) plans[idx].done = !plans[idx].done;
-    saveData(KEYS.plan, plans);
-    renderPlan();
+    const { data } = await sb.from('plans').select('done').eq('id', el.dataset.id).single();
+    if (data) {
+      showLoading(true);
+      await sb.from('plans').update({ done: !data.done }).eq('id', el.dataset.id).eq('user_id', currentUser.id);
+      showLoading(false);
+      await renderPlan();
+    }
   }
   if (el.dataset.action === 'delete-plan') {
     if (!confirm('Hapus goal ini?')) return;
-    saveData(KEYS.plan, plans.filter(p => p.id !== el.dataset.id));
-    renderPlan();
+    showLoading(true);
+    await sb.from('plans').delete().eq('id', el.dataset.id).eq('user_id', currentUser.id);
+    showLoading(false);
+    await renderPlan();
   }
 });
 
-planList.addEventListener('input', e => {
+planList.addEventListener('input', async e => {
   if (e.target.dataset.action === 'progress') {
-    const plans = loadData(KEYS.plan);
-    const idx = plans.findIndex(p => p.id === e.target.dataset.id);
-    if (idx !== -1) {
-      plans[idx].progress = parseInt(e.target.value, 10);
-      saveData(KEYS.plan, plans);
-      // Update display without full re-render
-      const card = e.target.closest('.plan-card');
-      if (card) {
-        card.querySelector('.plan-progress-fill').style.width = e.target.value + '%';
-        card.querySelector('.plan-progress-label span:last-child').textContent = e.target.value + '%';
-      }
+    const val = parseInt(e.target.value, 10);
+    const card = e.target.closest('.plan-card');
+    if (card) {
+      card.querySelector('.plan-progress-fill').style.width = val + '%';
+      card.querySelector('.plan-progress-label span:last-child').textContent = val + '%';
     }
+    await sb.from('plans').update({ progress: val }).eq('id', e.target.dataset.id).eq('user_id', currentUser.id);
   }
 });
 
@@ -414,14 +485,12 @@ planList.addEventListener('input', e => {
 // ════════════════════════════════════════════════
 const habitForm = document.getElementById('habit-form');
 const habitList = document.getElementById('habit-list');
-
 const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
 function getWeekDates() {
   const today = new Date();
-  const day = today.getDay(); // 0=Sun
   const monday = new Date(today);
-  monday.setDate(today.getDate() - ((day + 6) % 7)); // start from Monday
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
@@ -429,30 +498,44 @@ function getWeekDates() {
   });
 }
 
-function renderHabit() {
-  const habits = loadData(KEYS.habit);
-  const weekDates = getWeekDates();
+function calcStreak(log) {
+  if (!log || !log.length) return 0;
+  let streak = 0;
+  const check = new Date();
+  check.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 365; i++) {
+    if (log.includes(check.toISOString().slice(0, 10))) {
+      streak++;
+      check.setDate(check.getDate() - 1);
+    } else break;
+  }
+  return streak;
+}
 
-  // Update week label
+async function renderHabit() {
+  const { data: habits } = await sb.from('habits').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true });
+  const list = habits || [];
+  const weekDates = getWeekDates();
+  const today = new Date().toISOString().slice(0, 10);
+
   const label = document.getElementById('habit-week-label');
   const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
   label.textContent = `Minggu ini: ${fmt(weekDates[0])} – ${fmt(weekDates[6])}`;
 
-  if (!habits.length) {
+  if (!list.length) {
     habitList.innerHTML = '<p class="empty-state">Belum ada kebiasaan. Mulai bangun rutinmu ✦</p>';
     return;
   }
 
-  habitList.innerHTML = habits.map(h => {
-    const streak = calcStreak(h);
+  habitList.innerHTML = list.map(h => {
+    const streak = calcStreak(h.log);
     const days = weekDates.map((date, i) => {
-      const done = (h.log || []).includes(date);
-      const today = new Date().toISOString().slice(0, 10);
+      const done     = (h.log || []).includes(date);
       const isFuture = date > today;
       return `
-        <div class="habit-day ${done ? 'done' : ''} ${isFuture ? 'future' : ''}"
+        <div class="habit-day ${done ? 'done' : ''}"
           data-action="${isFuture ? '' : 'toggle-habit'}"
-          data-id="${h.id}" data-date="${date}"
+          data-id="${h.id}" data-date="${date}" data-log='${JSON.stringify(h.log || [])}'
           title="${date}">
           <span class="day-name">${DAY_NAMES[(i + 1) % 7]}</span>
           ${done ? '✓' : new Date(date + 'T00:00:00').getDate()}
@@ -475,68 +558,37 @@ function renderHabit() {
   }).join('');
 }
 
-function calcStreak(habit) {
-  const log = (habit.log || []).sort().reverse();
-  if (!log.length) return 0;
-  let streak = 0;
-  let check = new Date();
-  check.setHours(0, 0, 0, 0);
-  for (let i = 0; i < 365; i++) {
-    const dateStr = check.toISOString().slice(0, 10);
-    if (log.includes(dateStr)) {
-      streak++;
-      check.setDate(check.getDate() - 1);
-    } else {
-      break;
-    }
-  }
-  return streak;
-}
-
-habitForm.addEventListener('submit', e => {
+habitForm.addEventListener('submit', async e => {
   e.preventDefault();
   const name = document.getElementById('habit-input').value.trim();
   const icon = document.getElementById('habit-icon').value;
   if (!name) return;
-  const habits = loadData(KEYS.habit);
-  habits.push({ id: crypto.randomUUID(), name, icon, log: [], created_at: new Date().toISOString() });
-  saveData(KEYS.habit, habits);
+  showLoading(true);
+  await sb.from('habits').insert({ user_id: currentUser.id, name, icon, log: [] });
+  showLoading(false);
   habitForm.reset();
-  renderHabit();
+  await renderHabit();
 });
 
-habitList.addEventListener('click', e => {
+habitList.addEventListener('click', async e => {
   const el = e.target.closest('[data-action]');
   if (!el || !el.dataset.action) return;
 
-  const habits = loadData(KEYS.habit);
-
   if (el.dataset.action === 'toggle-habit') {
-    const idx = habits.findIndex(h => h.id === el.dataset.id);
-    if (idx === -1) return;
-    const date = el.dataset.date;
-    const log = habits[idx].log || [];
-    if (log.includes(date)) {
-      habits[idx].log = log.filter(d => d !== date);
-    } else {
-      habits[idx].log = [...log, date];
-    }
-    saveData(KEYS.habit, habits);
-    renderHabit();
+    const date    = el.dataset.date;
+    const log     = JSON.parse(el.dataset.log || '[]');
+    const newLog  = log.includes(date) ? log.filter(d => d !== date) : [...log, date];
+    showLoading(true);
+    await sb.from('habits').update({ log: newLog }).eq('id', el.dataset.id).eq('user_id', currentUser.id);
+    showLoading(false);
+    await renderHabit();
   }
 
   if (el.dataset.action === 'delete-habit') {
     if (!confirm('Hapus kebiasaan ini?')) return;
-    saveData(KEYS.habit, habits.filter(h => h.id !== el.dataset.id));
-    renderHabit();
+    showLoading(true);
+    await sb.from('habits').delete().eq('id', el.dataset.id).eq('user_id', currentUser.id);
+    showLoading(false);
+    await renderHabit();
   }
 });
-
-// ════════════════════════════════════════════════
-//  INIT
-// ════════════════════════════════════════════════
-renderJournal();
-renderMoodStats();
-renderTodo();
-renderPlan();
-renderHabit();
