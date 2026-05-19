@@ -40,6 +40,118 @@ function showEl(id) { document.getElementById(id).classList.remove('hidden'); }
 function hideEl(id) { document.getElementById(id).classList.add('hidden'); }
 
 // ════════════════════════════════════════════════
+//  PIN SCREEN
+// ════════════════════════════════════════════════
+const PIN_KEY        = 'soulful_pin';
+const SESSION_KEY    = 'soulful_session_time';
+const SESSION_LIMIT  = 24 * 60 * 60 * 1000; // 24 jam dalam ms
+
+let pinMode    = 'enter'; // 'enter' | 'set'
+let pinInput   = '';
+let pinConfirm = '';
+
+function hasPin()       { return !!localStorage.getItem(PIN_KEY); }
+function getPin()       { return localStorage.getItem(PIN_KEY); }
+function savePin(pin)   { localStorage.setItem(PIN_KEY, pin); }
+function clearPin()     { localStorage.removeItem(PIN_KEY); }
+
+function stampSession() { localStorage.setItem(SESSION_KEY, Date.now().toString()); }
+function sessionExpired() {
+  const t = parseInt(localStorage.getItem(SESSION_KEY) || '0', 10);
+  return Date.now() - t > SESSION_LIMIT;
+}
+
+function showPinPage(mode = 'enter') {
+  pinMode  = mode;
+  pinInput = '';
+  pinConfirm = '';
+  updatePinDots();
+  hideEl('auth-page');
+  hideEl('app');
+  showEl('pin-page');
+  document.getElementById('pin-error').classList.add('hidden');
+  document.getElementById('pin-subtitle').textContent =
+    mode === 'set'     ? 'Create a 4-digit PIN' :
+    mode === 'confirm' ? 'Confirm your PIN' :
+                         'Enter your PIN';
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('dot-' + i).classList.toggle('filled', i < pinInput.length);
+  }
+}
+
+function pinError(msg) {
+  const el = document.getElementById('pin-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  // Shake dots
+  const dots = document.querySelector('.pin-dots');
+  dots.style.animation = 'none';
+  setTimeout(() => { dots.style.animation = 'shake 0.3s ease'; }, 10);
+  pinInput = '';
+  updatePinDots();
+}
+
+document.querySelector('.pin-keypad').addEventListener('click', e => {
+  const key = e.target.closest('.pin-key');
+  if (!key) return;
+  const val = key.dataset.val;
+
+  if (val === 'clear') { pinInput = ''; updatePinDots(); return; }
+  if (val === 'del')   { pinInput = pinInput.slice(0, -1); updatePinDots(); return; }
+  if (pinInput.length >= 4) return;
+
+  pinInput += val;
+  updatePinDots();
+  document.getElementById('pin-error').classList.add('hidden');
+
+  if (pinInput.length === 4) {
+    setTimeout(() => handlePinComplete(), 150);
+  }
+});
+
+function handlePinComplete() {
+  if (pinMode === 'enter') {
+    if (pinInput === getPin()) {
+      stampSession();
+      hideEl('pin-page');
+      showEl('app');
+      loadAll();
+    } else {
+      pinError('Wrong PIN. Try again.');
+    }
+  } else if (pinMode === 'set') {
+    pinConfirm = pinInput;
+    pinInput   = '';
+    updatePinDots();
+    pinMode = 'confirm';
+    document.getElementById('pin-subtitle').textContent = 'Confirm your PIN';
+  } else if (pinMode === 'confirm') {
+    if (pinInput === pinConfirm) {
+      savePin(pinInput);
+      stampSession();
+      hideEl('pin-page');
+      showEl('app');
+      loadAll();
+    } else {
+      pinConfirm = '';
+      pinMode    = 'set';
+      pinError('PINs do not match. Try again.');
+      document.getElementById('pin-subtitle').textContent = 'Create a 4-digit PIN';
+    }
+  }
+}
+
+document.getElementById('pin-signout').addEventListener('click', async () => {
+  if (!confirm('Sign out and clear PIN?')) return;
+  clearPin();
+  localStorage.removeItem(SESSION_KEY);
+  await sb.auth.signOut();
+});
+
+// ════════════════════════════════════════════════
 //  AUTH
 // ════════════════════════════════════════════════
 let currentUser = null;
@@ -106,13 +218,22 @@ sb.auth.onAuthStateChange(async (event, session) => {
   if (session && session.user) {
     currentUser = session.user;
     document.getElementById('user-email-display').textContent = currentUser.email;
-    hideEl('auth-page');
-    showEl('app');
-    await loadAll();
+
+    if (!hasPin()) {
+      // Belum punya PIN — minta buat PIN baru
+      showPinPage('set');
+    } else if (sessionExpired()) {
+      // Session expired (>24 jam) — minta PIN
+      showPinPage('enter');
+    } else {
+      // Session masih aktif — minta PIN
+      showPinPage('enter');
+    }
   } else {
     currentUser = null;
-    showEl('auth-page');
+    hideEl('pin-page');
     hideEl('app');
+    showEl('auth-page');
   }
 });
 

@@ -15,6 +15,41 @@
 </head>
 <body>
 
+  <!-- ═══════════ PIN SCREEN ═══════════ -->
+  <div id="pin-page" class="pin-page hidden">
+    <div class="pin-box">
+      <img src="nuansa buku-buku.jpg.jpg" alt="bg" class="pin-bg-img" />
+      <div class="pin-overlay"></div>
+      <div class="pin-content">
+        <p class="pin-emoji">🦋</p>
+        <h2 class="pin-title">Soulful Notes</h2>
+        <p class="pin-subtitle" id="pin-subtitle">Enter your PIN</p>
+        <div class="pin-dots">
+          <span class="pin-dot" id="dot-0"></span>
+          <span class="pin-dot" id="dot-1"></span>
+          <span class="pin-dot" id="dot-2"></span>
+          <span class="pin-dot" id="dot-3"></span>
+        </div>
+        <p class="pin-error hidden" id="pin-error">Wrong PIN. Try again.</p>
+        <div class="pin-keypad">
+          <button class="pin-key" data-val="1">1</button>
+          <button class="pin-key" data-val="2">2</button>
+          <button class="pin-key" data-val="3">3</button>
+          <button class="pin-key" data-val="4">4</button>
+          <button class="pin-key" data-val="5">5</button>
+          <button class="pin-key" data-val="6">6</button>
+          <button class="pin-key" data-val="7">7</button>
+          <button class="pin-key" data-val="8">8</button>
+          <button class="pin-key" data-val="9">9</button>
+          <button class="pin-key pin-key-clear" data-val="clear">✕</button>
+          <button class="pin-key" data-val="0">0</button>
+          <button class="pin-key pin-key-del" data-val="del">⌫</button>
+        </div>
+        <button class="pin-signout-btn" id="pin-signout">Sign out</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════ AUTH PAGE ═══════════ -->
   <div id="auth-page" class="auth-page hidden">
     <div class="auth-box">
