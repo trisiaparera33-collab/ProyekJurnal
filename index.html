@@ -1,6 +1,6 @@
 <!-- My Aesthetic Journal — browser-based personal journal app, no backend. Data stored in localStorage. -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -20,40 +20,138 @@
     </div>
   </header>
 
+  <!-- Navigation Tabs -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="journal">📖 Jurnal</button>
+    <button class="tab-btn" data-tab="todo">✅ To-Do</button>
+    <button class="tab-btn" data-tab="planning">🌱 Life Planning</button>
+    <button class="tab-btn" data-tab="habit">🔥 Habit Tracker</button>
+  </nav>
+
   <main>
-    <!-- Form + Decoration Side by Side -->
-    <div class="form-row">
+
+    <!-- ═══════════════ TAB: JURNAL ═══════════════ -->
+    <div class="tab-panel active" id="tab-journal">
+      <div class="form-row">
+        <section class="form-section">
+          <h2>✍️ Write Today</h2>
+          <form id="journal-form">
+            <input type="text" id="title" placeholder="Judul jurnal..." required />
+            <input type="date" id="date" required />
+            <div class="mood-picker">
+              <span>Mood hari ini:</span>
+              <label><input type="radio" name="mood" value="😊 Senang" required /> 😊 Senang</label>
+              <label><input type="radio" name="mood" value="😢 Sedih" /> 😢 Sedih</label>
+              <label><input type="radio" name="mood" value="☕ Tenang" /> ☕ Tenang</label>
+              <label><input type="radio" name="mood" value="🤯 Stres" /> 🤯 Stres</label>
+            </div>
+            <textarea id="content" placeholder="Ceritakan harimu..." rows="5" required></textarea>
+            <button type="submit">💾 Simpan Jurnal</button>
+          </form>
+        </section>
+        <aside class="form-deco">
+          <img src="Wanita Belajar.jpg.jpg" alt="Woman studying" class="deco-img" />
+        </aside>
+      </div>
+
+      <section class="list-section">
+        <h2>📚 Riwayat Jurnal</h2>
+        <div id="journal-list"></div>
+      </section>
+    </div>
+
+    <!-- ═══════════════ TAB: TO-DO LIST ═══════════════ -->
+    <div class="tab-panel" id="tab-todo">
       <section class="form-section">
-        <h2>Write Today</h2>
-        <form id="journal-form">
-          <input type="text" id="title" placeholder="Journal title..." required />
-          <input type="date" id="date" required />
-          <div class="mood-picker">
-            <span>Today's mood:</span>
-            <label><input type="radio" name="mood" value="😊 Happy" required /> 😊 Happy</label>
-            <label><input type="radio" name="mood" value="😢 Sad" /> 😢 Sad</label>
-            <label><input type="radio" name="mood" value="☕ Calm" /> ☕ Calm</label>
-            <label><input type="radio" name="mood" value="🤯 Stressed" /> 🤯 Stressed</label>
+        <h2>✅ To-Do List</h2>
+        <form id="todo-form">
+          <div class="input-row">
+            <input type="text" id="todo-input" placeholder="Tambah tugas baru..." required />
+            <select id="todo-priority">
+              <option value="tinggi">🔴 Tinggi</option>
+              <option value="sedang" selected>🟡 Sedang</option>
+              <option value="rendah">🟢 Rendah</option>
+            </select>
+            <button type="submit">Tambah</button>
           </div>
-          <textarea id="content" placeholder="Tell me about your day..." rows="5" required></textarea>
-          <button type="submit">Save Journal</button>
         </form>
       </section>
 
-      <!-- Decoration Image -->
-      <aside class="form-deco">
-        <img src="Wanita Belajar.jpg.jpg" alt="Woman studying" class="deco-img" />
-      </aside>
+      <section class="list-section">
+        <div class="todo-filters">
+          <button class="filter-btn active" data-filter="semua">Semua</button>
+          <button class="filter-btn" data-filter="aktif">Aktif</button>
+          <button class="filter-btn" data-filter="selesai">Selesai</button>
+        </div>
+        <div id="todo-list"></div>
+      </section>
     </div>
 
-    <!-- Journal List -->
-    <section class="list-section">
-      <h2>Journal History</h2>
-      <div id="journal-list"></div>
-    </section>
+    <!-- ═══════════════ TAB: LIFE PLANNING ═══════════════ -->
+    <div class="tab-panel" id="tab-planning">
+      <section class="form-section">
+        <h2>🌱 Life Planning</h2>
+        <form id="plan-form">
+          <input type="text" id="plan-title" placeholder="Nama goal..." required />
+          <textarea id="plan-desc" placeholder="Deskripsi goal kamu..." rows="3"></textarea>
+          <div class="input-row">
+            <select id="plan-category">
+              <option value="karir">💼 Karir</option>
+              <option value="kesehatan">💪 Kesehatan</option>
+              <option value="keuangan">💰 Keuangan</option>
+              <option value="pendidikan">📚 Pendidikan</option>
+              <option value="hubungan">❤️ Hubungan</option>
+              <option value="hobi">🎨 Hobi</option>
+              <option value="lainnya">✨ Lainnya</option>
+            </select>
+            <select id="plan-timeline">
+              <option value="minggu ini">Minggu ini</option>
+              <option value="bulan ini">Bulan ini</option>
+              <option value="3 bulan">3 Bulan</option>
+              <option value="6 bulan">6 Bulan</option>
+              <option value="1 tahun">1 Tahun</option>
+            </select>
+            <button type="submit">Tambah Goal</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="list-section">
+        <div id="plan-list"></div>
+      </section>
+    </div>
+
+    <!-- ═══════════════ TAB: HABIT TRACKER ═══════════════ -->
+    <div class="tab-panel" id="tab-habit">
+      <section class="form-section">
+        <h2>🔥 Habit Tracker</h2>
+        <form id="habit-form">
+          <div class="input-row">
+            <input type="text" id="habit-input" placeholder="Nama kebiasaan baru..." required />
+            <select id="habit-icon">
+              <option value="💧">💧 Minum air</option>
+              <option value="📖">📖 Membaca</option>
+              <option value="🏃">🏃 Olahraga</option>
+              <option value="🧘">🧘 Meditasi</option>
+              <option value="✍️">✍️ Menulis</option>
+              <option value="🌙">🌙 Tidur cukup</option>
+              <option value="🥗">🥗 Makan sehat</option>
+              <option value="⭐">⭐ Lainnya</option>
+            </select>
+            <button type="submit">Tambah</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="list-section">
+        <div id="habit-week-label" class="week-label"></div>
+        <div id="habit-list"></div>
+      </section>
+    </div>
+
   </main>
 
-  <!-- Modal Detail -->
+  <!-- Modal Detail Jurnal -->
   <div id="modal" class="modal hidden">
     <div class="modal-content">
       <button class="close-btn" id="close-modal">✕</button>
