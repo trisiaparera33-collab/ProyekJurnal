@@ -54,8 +54,21 @@
         </aside>
       </div>
 
+      <!-- Mood Statistics -->
+      <section class="mood-stats" id="mood-stats"></section>
+
       <section class="list-section">
-        <h2>📚 Riwayat Jurnal</h2>
+        <div class="journal-list-header">
+          <h2>📚 Riwayat Jurnal</h2>
+          <div class="journal-actions">
+            <input type="search" id="journal-search" placeholder="🔍 Cari jurnal..." />
+            <button id="btn-export" class="action-btn" title="Export data">⬇️ Export</button>
+            <label class="action-btn" title="Import data">
+              ⬆️ Import
+              <input type="file" id="import-file" accept=".json" style="display:none" />
+            </label>
+          </div>
+        </div>
         <div id="journal-list"></div>
       </section>
     </div>

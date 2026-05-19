@@ -49,27 +49,143 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 const journalForm = document.getElementById('journal-form');
 const journalList = document.getElementById('journal-list');
 const modal       = document.getElementById('modal');
+const journalSearch = document.getElementById('journal-search');
 
-function renderJournal() {
+// ── Mood Stats ───────────────────────────────────
+function renderMoodStats() {
   const journals = loadData(KEYS.journal);
+  const statsEl = document.getElementById('mood-stats');
   if (!journals.length) {
-    journalList.innerHTML = '<p class="empty-state">Belum ada jurnal. Mulai tulis hari ini ✦</p>';
+    statsEl.innerHTML = '<span class="mood-stats-empty">Tulis jurnal pertamamu untuk melihat statistik mood ✦</span>';
+    return;
+  }
+  const counts = {};
+  journals.forEach(j => {
+    const mood = j.mood || '';
+    counts[mood] = (counts[mood] || 0) + 1;
+  });
+  statsEl.innerHTML = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([mood, count]) => `
+      <div class="mood-stat-item">
+        <span>${mood.split(' ')[0]}</span>
+        <span>${mood.split(' ').slice(1).join(' ')}</span>
+        <span class="mood-stat-count">${count}x</span>
+      </div>
+    `).join('');
+}
+
+// ── Render Journal ────────────────────────────────
+function renderJournal(query = '') {
+  let journals = loadData(KEYS.journal);
+  if (query.trim()) {
+    const q = query.toLowerCase();
+    journals = journals.filter(j =>
+      j.title.toLowerCase().includes(q) ||
+      j.content.toLowerCase().includes(q) ||
+      j.mood.toLowerCase().includes(q)
+    );
+  }
+  if (!journals.length) {
+    journalList.innerHTML = query
+      ? '<p class="empty-state">Tidak ada jurnal yang cocok ✦</p>'
+      : '<p class="empty-state">Belum ada jurnal. Mulai tulis hari ini ✦</p>';
     return;
   }
   journalList.innerHTML = journals
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .map(j => `
-      <div class="card" data-id="${j.id}">
-        <div class="card-mood">${j.mood.split(' ')[0]}</div>
-        <div class="card-title">${escHtml(j.title)}</div>
-        <div class="card-date">${formatDate(j.date)}</div>
-        <div class="card-preview">${escHtml(j.content.slice(0, 80))}${j.content.length > 80 ? '…' : ''}</div>
-        <div class="card-footer">
-          <button class="delete-btn" data-id="${j.id}">🗑 Hapus</button>
+    .map(j => {
+      const preview = query.trim()
+        ? highlightText(escHtml(j.content.slice(0, 80)) + (j.content.length > 80 ? '…' : ''), query)
+        : escHtml(j.content.slice(0, 80)) + (j.content.length > 80 ? '…' : '');
+      const titleDisplay = query.trim()
+        ? highlightText(escHtml(j.title), query)
+        : escHtml(j.title);
+      return `
+        <div class="card" data-id="${j.id}">
+          <div class="card-mood">${j.mood.split(' ')[0]}</div>
+          <div class="card-title">${titleDisplay}</div>
+          <div class="card-date">${formatDate(j.date)}</div>
+          <div class="card-preview">${preview}</div>
+          <div class="card-footer">
+            <button class="delete-btn" data-id="${j.id}">🗑 Hapus</button>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 }
+
+function highlightText(text, query) {
+  const q = escHtml(query.trim());
+  if (!q) return text;
+  const regex = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+  return text.replace(regex, '<mark style="background:#f0ddd0;border-radius:3px;padding:0 2px">$1</mark>');
+}
+
+// ── Search ────────────────────────────────────────
+journalSearch.addEventListener('input', () => renderJournal(journalSearch.value));
+
+// ── Export ────────────────────────────────────────
+document.getElementById('btn-export').addEventListener('click', () => {
+  const allData = {
+    exported_at: new Date().toISOString(),
+    journal: loadData(KEYS.journal),
+    todo:    loadData(KEYS.todo),
+    plan:    loadData(KEYS.plan),
+    habit:   loadData(KEYS.habit),
+  };
+  const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `my-journal-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ── Import ────────────────────────────────────────
+document.getElementById('import-file').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!confirm('Import akan menggabungkan data lama dengan data baru. Lanjutkan?')) return;
+      if (Array.isArray(data.journal)) {
+        const existing = loadData(KEYS.journal);
+        const existingIds = new Set(existing.map(j => j.id));
+        const merged = [...existing, ...data.journal.filter(j => !existingIds.has(j.id))];
+        saveData(KEYS.journal, merged);
+      }
+      if (Array.isArray(data.todo)) {
+        const existing = loadData(KEYS.todo);
+        const existingIds = new Set(existing.map(t => t.id));
+        saveData(KEYS.todo, [...existing, ...data.todo.filter(t => !existingIds.has(t.id))]);
+      }
+      if (Array.isArray(data.plan)) {
+        const existing = loadData(KEYS.plan);
+        const existingIds = new Set(existing.map(p => p.id));
+        saveData(KEYS.plan, [...existing, ...data.plan.filter(p => !existingIds.has(p.id))]);
+      }
+      if (Array.isArray(data.habit)) {
+        const existing = loadData(KEYS.habit);
+        const existingIds = new Set(existing.map(h => h.id));
+        saveData(KEYS.habit, [...existing, ...data.habit.filter(h => !existingIds.has(h.id))]);
+      }
+      renderJournal();
+      renderMoodStats();
+      renderTodo();
+      renderPlan();
+      renderHabit();
+      alert('Import berhasil ✦');
+    } catch {
+      alert('File tidak valid. Pastikan file adalah backup dari jurnal ini.');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
 
 journalForm.addEventListener('submit', e => {
   e.preventDefault();
@@ -88,6 +204,7 @@ journalForm.addEventListener('submit', e => {
   saveData(KEYS.journal, journals);
   journalForm.reset();
   renderJournal();
+  renderMoodStats();
 });
 
 journalList.addEventListener('click', e => {
@@ -96,7 +213,8 @@ journalList.addEventListener('click', e => {
     e.stopPropagation();
     if (!confirm('Hapus jurnal ini?')) return;
     saveData(KEYS.journal, loadData(KEYS.journal).filter(j => j.id !== deleteBtn.dataset.id));
-    renderJournal();
+    renderJournal(journalSearch.value);
+    renderMoodStats();
     return;
   }
   const card = e.target.closest('.card');
@@ -418,6 +536,7 @@ habitList.addEventListener('click', e => {
 //  INIT
 // ════════════════════════════════════════════════
 renderJournal();
+renderMoodStats();
 renderTodo();
 renderPlan();
 renderHabit();
