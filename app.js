@@ -20,7 +20,7 @@ function escHtml(str) {
 }
 
 function formatDate(dateStr) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('id-ID', {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 }
@@ -61,7 +61,7 @@ document.getElementById('login-form').addEventListener('submit', async e => {
   const { error } = await sb.auth.signInWithPassword({ email, password });
   showLoading(false);
   if (error) {
-    errEl.textContent = 'Email atau password salah. Coba lagi.';
+    errEl.textContent = 'Wrong email or password. Please try again.';
     errEl.classList.remove('hidden');
   }
 });
@@ -82,7 +82,7 @@ document.getElementById('register-form').addEventListener('submit', async e => {
     errEl.textContent = error.message;
     errEl.classList.remove('hidden');
   } else {
-    okEl.textContent = 'Akun berhasil dibuat! Cek email kamu untuk konfirmasi, lalu masuk.';
+    okEl.textContent = 'Account created! Check your email to confirm, then sign in.';
     okEl.classList.remove('hidden');
     document.getElementById('register-form').reset();
   }
@@ -90,11 +90,11 @@ document.getElementById('register-form').addEventListener('submit', async e => {
 
 // Logout
 document.getElementById('btn-logout').addEventListener('click', async () => {
-  if (!confirm('Yakin mau keluar?')) return;
+  if (!confirm('Are you sure you want to sign out?')) return;
   await sb.auth.signOut();
 });
 
-// Auth state listener — ini yang mengontrol tampilan app vs login
+// Auth state listener
 sb.auth.onAuthStateChange(async (event, session) => {
   if (session && session.user) {
     currentUser = session.user;
@@ -138,7 +138,7 @@ async function renderMoodStats() {
   const { data: journals } = await sb.from('journals').select('mood').eq('user_id', currentUser.id);
   const statsEl = document.getElementById('mood-stats');
   if (!journals || !journals.length) {
-    statsEl.innerHTML = '<span class="mood-stats-empty">Tulis jurnal pertamamu untuk melihat statistik mood ✦</span>';
+    statsEl.innerHTML = '<span class="mood-stats-empty">Write your first journal to see mood stats ✦</span>';
     return;
   }
   const counts = {};
@@ -157,7 +157,7 @@ async function renderMoodStats() {
 async function renderJournal(query = '') {
   let q = sb.from('journals').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
   const { data: journals, error } = await q;
-  if (error) { journalList.innerHTML = '<p class="empty-state">Gagal memuat jurnal.</p>'; return; }
+  if (error) { journalList.innerHTML = '<p class="empty-state">Failed to load journals.</p>'; return; }
 
   let list = journals || [];
   if (query.trim()) {
@@ -171,8 +171,8 @@ async function renderJournal(query = '') {
 
   if (!list.length) {
     journalList.innerHTML = query
-      ? '<p class="empty-state">Tidak ada jurnal yang cocok ✦</p>'
-      : '<p class="empty-state">Belum ada jurnal. Mulai tulis hari ini ✦</p>';
+      ? '<p class="empty-state">No journals found ✦</p>'
+      : '<p class="empty-state">No journals yet. Start writing today ✦</p>';
     return;
   }
 
@@ -185,7 +185,7 @@ async function renderJournal(query = '') {
         <div class="card-date">${formatDate(j.date)}</div>
         <div class="card-preview">${preview}</div>
         <div class="card-footer">
-          <button class="delete-btn" data-id="${j.id}">🗑 Hapus</button>
+          <button class="delete-btn" data-id="${j.id}">🗑 Delete</button>
         </div>
       </div>
     `;
@@ -207,7 +207,7 @@ journalForm.addEventListener('submit', async e => {
     content: document.getElementById('content').value.trim(),
   });
   showLoading(false);
-  if (error) { alert('Gagal menyimpan jurnal: ' + error.message); return; }
+  if (error) { alert('Failed to save journal: ' + error.message); return; }
   journalForm.reset();
   await renderJournal();
   await renderMoodStats();
@@ -217,7 +217,7 @@ journalList.addEventListener('click', async e => {
   const deleteBtn = e.target.closest('.delete-btn');
   if (deleteBtn) {
     e.stopPropagation();
-    if (!confirm('Hapus jurnal ini?')) return;
+    if (!confirm('Delete this journal entry?')) return;
     showLoading(true);
     await sb.from('journals').delete().eq('id', deleteBtn.dataset.id).eq('user_id', currentUser.id);
     showLoading(false);
@@ -273,7 +273,7 @@ document.getElementById('import-file').addEventListener('change', async e => {
   reader.onload = async ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      if (!confirm('Import akan menambahkan data dari file backup. Lanjutkan?')) return;
+      if (!confirm('Import will add data from the backup file. Continue?')) return;
       showLoading(true);
       if (Array.isArray(data.journal) && data.journal.length) {
         const rows = data.journal.map(j => ({ ...j, user_id: currentUser.id, id: undefined }));
@@ -293,10 +293,10 @@ document.getElementById('import-file').addEventListener('change', async e => {
       }
       await loadAll();
       showLoading(false);
-      alert('Import berhasil ✦');
+      alert('Import successful ✦');
     } catch {
       showLoading(false);
-      alert('File tidak valid.');
+      alert('Invalid file. Please use a backup from this app.');
     }
     e.target.value = '';
   };
@@ -308,31 +308,31 @@ document.getElementById('import-file').addEventListener('change', async e => {
 // ════════════════════════════════════════════════
 const todoForm = document.getElementById('todo-form');
 const todoList = document.getElementById('todo-list');
-let todoFilter = 'semua';
+let todoFilter = 'all';
 
 async function renderTodo() {
   let q = sb.from('todos').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true });
-  if (todoFilter === 'aktif')   q = q.eq('done', false);
-  if (todoFilter === 'selesai') q = q.eq('done', true);
+  if (todoFilter === 'active') q = q.eq('done', false);
+  if (todoFilter === 'done')   q = q.eq('done', true);
   const { data: todos } = await q;
   const list = todos || [];
 
   if (!list.length) {
-    todoList.innerHTML = '<p class="empty-state">Tidak ada tugas di sini ✦</p>';
+    todoList.innerHTML = '<p class="empty-state">No tasks here ✦</p>';
     return;
   }
 
-  const order = { tinggi: 0, sedang: 1, rendah: 2 };
+  const order = { high: 0, medium: 1, low: 2 };
   todoList.innerHTML = list
     .sort((a, b) => (order[a.priority] ?? 1) - (order[b.priority] ?? 1))
     .map(t => `
-      <div class="todo-item ${t.done ? 'selesai' : ''}" data-id="${t.id}">
+      <div class="todo-item ${t.done ? 'done' : ''}" data-id="${t.id}">
         <div class="todo-check ${t.done ? 'checked' : ''}" data-action="toggle" data-id="${t.id}">
           ${t.done ? '✓' : ''}
         </div>
         <span class="todo-text">${escHtml(t.text)}</span>
         <span class="todo-priority priority-${t.priority}">
-          ${t.priority === 'tinggi' ? '🔴' : t.priority === 'sedang' ? '🟡' : '🟢'} ${t.priority}
+          ${t.priority === 'high' ? '🔴' : t.priority === 'medium' ? '🟡' : '🟢'} ${t.priority}
         </span>
         <button class="delete-btn" data-action="delete" data-id="${t.id}">🗑</button>
       </div>
@@ -364,7 +364,7 @@ todoList.addEventListener('click', async e => {
     }
   }
   if (el.dataset.action === 'delete') {
-    if (!confirm('Hapus tugas ini?')) return;
+    if (!confirm('Delete this task?')) return;
     showLoading(true);
     await sb.from('todos').delete().eq('id', el.dataset.id).eq('user_id', currentUser.id);
     showLoading(false);
@@ -380,7 +380,6 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
     await renderTodo();
   });
 });
-
 // ════════════════════════════════════════════════
 //  LIFE PLANNING
 // ════════════════════════════════════════════════
@@ -388,8 +387,8 @@ const planForm = document.getElementById('plan-form');
 const planList = document.getElementById('plan-list');
 
 const CATEGORY_ICONS = {
-  karir: '💼', kesehatan: '💪', keuangan: '💰',
-  pendidikan: '📚', hubungan: '❤️', hobi: '🎨', lainnya: '✨'
+  career: '💼', health: '💪', finance: '💰',
+  education: '📚', relationship: '❤️', hobby: '🎨', other: '✨'
 };
 
 async function renderPlan() {
@@ -397,7 +396,7 @@ async function renderPlan() {
   const list = plans || [];
 
   if (!list.length) {
-    planList.innerHTML = '<p class="empty-state" style="grid-column:1/-1">Belum ada goal. Yuk mulai rencanakan hidupmu ✦</p>';
+    planList.innerHTML = '<p class="empty-state" style="grid-column:1/-1">No goals yet. Start planning your life ✦</p>';
     return;
   }
 
@@ -422,8 +421,8 @@ async function renderPlan() {
           data-action="progress" data-id="${p.id}" />
       </div>
       <div class="plan-footer">
-        <button class="plan-status ${p.done ? 'selesai' : ''}" data-action="toggle-plan" data-id="${p.id}">
-          ${p.done ? '✅ Selesai' : '⬜ Tandai Selesai'}
+        <button class="plan-status ${p.done ? 'done' : ''}" data-action="toggle-plan" data-id="${p.id}">
+          ${p.done ? '✅ Completed' : '⬜ Mark as Done'}
         </button>
       </div>
     </div>
@@ -460,7 +459,7 @@ planList.addEventListener('click', async e => {
     }
   }
   if (el.dataset.action === 'delete-plan') {
-    if (!confirm('Hapus goal ini?')) return;
+    if (!confirm('Delete this goal?')) return;
     showLoading(true);
     await sb.from('plans').delete().eq('id', el.dataset.id).eq('user_id', currentUser.id);
     showLoading(false);
@@ -485,7 +484,7 @@ planList.addEventListener('input', async e => {
 // ════════════════════════════════════════════════
 const habitForm = document.getElementById('habit-form');
 const habitList = document.getElementById('habit-list');
-const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function getWeekDates() {
   const today = new Date();
@@ -519,11 +518,11 @@ async function renderHabit() {
   const today = new Date().toISOString().slice(0, 10);
 
   const label = document.getElementById('habit-week-label');
-  const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-  label.textContent = `Minggu ini: ${fmt(weekDates[0])} – ${fmt(weekDates[6])}`;
+  const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  label.textContent = `This week: ${fmt(weekDates[0])} – ${fmt(weekDates[6])}`;
 
   if (!list.length) {
-    habitList.innerHTML = '<p class="empty-state">Belum ada kebiasaan. Mulai bangun rutinmu ✦</p>';
+    habitList.innerHTML = '<p class="empty-state">No habits yet. Start building your routine ✦</p>';
     return;
   }
 
@@ -548,7 +547,7 @@ async function renderHabit() {
         <div class="habit-header">
           <span class="habit-name">${escHtml(h.icon)} ${escHtml(h.name)}</span>
           <div style="display:flex;gap:0.5rem;align-items:center">
-            <span class="habit-streak">🔥 ${streak} hari</span>
+            <span class="habit-streak">🔥 ${streak} days</span>
             <button class="delete-btn" data-action="delete-habit" data-id="${h.id}">🗑</button>
           </div>
         </div>
@@ -585,7 +584,7 @@ habitList.addEventListener('click', async e => {
   }
 
   if (el.dataset.action === 'delete-habit') {
-    if (!confirm('Hapus kebiasaan ini?')) return;
+    if (!confirm('Delete this habit?')) return;
     showLoading(true);
     await sb.from('habits').delete().eq('id', el.dataset.id).eq('user_id', currentUser.id);
     showLoading(false);

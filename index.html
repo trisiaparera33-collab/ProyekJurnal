@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,7 +8,7 @@
 </head>
 <body>
 
-  <!-- ═══════════ HALAMAN AUTH (login/register) ═══════════ -->
+  <!-- ═══════════ AUTH PAGE ═══════════ -->
   <div id="auth-page" class="auth-page hidden">
     <div class="auth-box">
       <div class="auth-hero">
@@ -18,27 +18,21 @@
           <p>small notes for a big soul</p>
         </div>
       </div>
-
       <div class="auth-form-wrap">
-        <!-- Tab login/register -->
         <div class="auth-tabs">
-          <button class="auth-tab active" data-auth="login">Masuk</button>
-          <button class="auth-tab" data-auth="register">Daftar</button>
+          <button class="auth-tab active" data-auth="login">Sign In</button>
+          <button class="auth-tab" data-auth="register">Sign Up</button>
         </div>
-
-        <!-- Login -->
         <form id="login-form" class="auth-form">
-          <input type="email" id="login-email" placeholder="Email kamu..." required />
+          <input type="email" id="login-email" placeholder="Your email..." required />
           <input type="password" id="login-password" placeholder="Password..." required />
-          <button type="submit">Masuk →</button>
+          <button type="submit">Sign In →</button>
           <p id="login-error" class="auth-error hidden"></p>
         </form>
-
-        <!-- Register -->
         <form id="register-form" class="auth-form hidden">
-          <input type="email" id="reg-email" placeholder="Email kamu..." required />
-          <input type="password" id="reg-password" placeholder="Password (min. 6 karakter)..." required minlength="6" />
-          <button type="submit">Buat Akun →</button>
+          <input type="email" id="reg-email" placeholder="Your email..." required />
+          <input type="password" id="reg-password" placeholder="Password (min. 6 characters)..." required minlength="6" />
+          <button type="submit">Create Account →</button>
           <p id="reg-error" class="auth-error hidden"></p>
           <p id="reg-success" class="auth-success hidden"></p>
         </form>
@@ -46,10 +40,9 @@
     </div>
   </div>
 
-  <!-- ═══════════ APP UTAMA ═══════════ -->
+  <!-- ═══════════ MAIN APP ═══════════ -->
   <div id="app" class="hidden">
 
-    <!-- Hero Header -->
     <header class="hero-header">
       <div class="hero-img-wrap">
         <img src="Wanita dan sunflower.jpg.jpg" alt="Woman with sunflowers" class="hero-img" />
@@ -59,38 +52,38 @@
         <p class="subtitle">small notes for a big soul</p>
         <div class="user-bar">
           <span id="user-email-display"></span>
-          <button id="btn-logout" class="logout-btn">Keluar</button>
+          <button id="btn-logout" class="logout-btn">Sign Out</button>
         </div>
       </div>
     </header>
 
-    <!-- Navigation Tabs -->
     <nav class="tab-nav">
-      <button class="tab-btn active" data-tab="journal">📖 Jurnal</button>
+      <button class="tab-btn active" data-tab="journal">📖 Journal</button>
       <button class="tab-btn" data-tab="todo">✅ To-Do</button>
       <button class="tab-btn" data-tab="planning">🌱 Life Planning</button>
       <button class="tab-btn" data-tab="habit">🔥 Habit Tracker</button>
+      <button class="tab-btn" data-tab="about">💡 About</button>
     </nav>
 
     <main>
 
-      <!-- ═══════════════ TAB: JURNAL ═══════════════ -->
+      <!-- ═══ TAB: JOURNAL ═══ -->
       <div class="tab-panel active" id="tab-journal">
         <div class="form-row">
           <section class="form-section">
             <h2>✍️ Write Today</h2>
             <form id="journal-form">
-              <input type="text" id="title" placeholder="Judul jurnal..." required />
+              <input type="text" id="title" placeholder="Journal title..." required />
               <input type="date" id="date" required />
               <div class="mood-picker">
-                <span>Mood hari ini:</span>
-                <label><input type="radio" name="mood" value="😊 Senang" required /> 😊 Senang</label>
-                <label><input type="radio" name="mood" value="😢 Sedih" /> 😢 Sedih</label>
-                <label><input type="radio" name="mood" value="☕ Tenang" /> ☕ Tenang</label>
-                <label><input type="radio" name="mood" value="🤯 Stres" /> 🤯 Stres</label>
+                <span>Today's mood:</span>
+                <label><input type="radio" name="mood" value="😊 Happy" required /> 😊 Happy</label>
+                <label><input type="radio" name="mood" value="😢 Sad" /> 😢 Sad</label>
+                <label><input type="radio" name="mood" value="☕ Calm" /> ☕ Calm</label>
+                <label><input type="radio" name="mood" value="🤯 Stressed" /> 🤯 Stressed</label>
               </div>
-              <textarea id="content" placeholder="Ceritakan harimu..." rows="5" required></textarea>
-              <button type="submit">💾 Simpan Jurnal</button>
+              <textarea id="content" placeholder="Tell me about your day..." rows="5" required></textarea>
+              <button type="submit">💾 Save Journal</button>
             </form>
           </section>
           <aside class="form-deco">
@@ -100,9 +93,9 @@
 
         <section class="list-section">
           <div class="journal-list-header">
-            <h2>📚 Riwayat Jurnal</h2>
+            <h2>📚 Journal History</h2>
             <div class="journal-actions">
-              <input type="search" id="journal-search" placeholder="🔍 Cari jurnal..." />
+              <input type="search" id="journal-search" placeholder="🔍 Search journals..." />
               <button id="btn-export" class="action-btn">⬇️ Export</button>
               <label class="action-btn">
                 ⬆️ Import
@@ -115,57 +108,57 @@
         </section>
       </div>
 
-      <!-- ═══════════════ TAB: TO-DO LIST ═══════════════ -->
+      <!-- ═══ TAB: TO-DO ═══ -->
       <div class="tab-panel" id="tab-todo">
         <section class="form-section">
           <h2>✅ To-Do List</h2>
           <form id="todo-form">
             <div class="input-row">
-              <input type="text" id="todo-input" placeholder="Tambah tugas baru..." required />
+              <input type="text" id="todo-input" placeholder="Add a new task..." required />
               <select id="todo-priority">
-                <option value="tinggi">🔴 Tinggi</option>
-                <option value="sedang" selected>🟡 Sedang</option>
-                <option value="rendah">🟢 Rendah</option>
+                <option value="high">🔴 High</option>
+                <option value="medium" selected>🟡 Medium</option>
+                <option value="low">🟢 Low</option>
               </select>
-              <button type="submit">Tambah</button>
+              <button type="submit">Add</button>
             </div>
           </form>
         </section>
         <section class="list-section">
           <div class="todo-filters">
-            <button class="filter-btn active" data-filter="semua">Semua</button>
-            <button class="filter-btn" data-filter="aktif">Aktif</button>
-            <button class="filter-btn" data-filter="selesai">Selesai</button>
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="active">Active</button>
+            <button class="filter-btn" data-filter="done">Done</button>
           </div>
           <div id="todo-list"></div>
         </section>
       </div>
 
-      <!-- ═══════════════ TAB: LIFE PLANNING ═══════════════ -->
+      <!-- ═══ TAB: LIFE PLANNING ═══ -->
       <div class="tab-panel" id="tab-planning">
         <section class="form-section">
           <h2>🌱 Life Planning</h2>
           <form id="plan-form">
-            <input type="text" id="plan-title" placeholder="Nama goal..." required />
-            <textarea id="plan-desc" placeholder="Deskripsi goal kamu..." rows="3"></textarea>
+            <input type="text" id="plan-title" placeholder="Goal name..." required />
+            <textarea id="plan-desc" placeholder="Describe your goal..." rows="3"></textarea>
             <div class="input-row">
               <select id="plan-category">
-                <option value="karir">💼 Karir</option>
-                <option value="kesehatan">💪 Kesehatan</option>
-                <option value="keuangan">💰 Keuangan</option>
-                <option value="pendidikan">📚 Pendidikan</option>
-                <option value="hubungan">❤️ Hubungan</option>
-                <option value="hobi">🎨 Hobi</option>
-                <option value="lainnya">✨ Lainnya</option>
+                <option value="career">💼 Career</option>
+                <option value="health">💪 Health</option>
+                <option value="finance">💰 Finance</option>
+                <option value="education">📚 Education</option>
+                <option value="relationship">❤️ Relationship</option>
+                <option value="hobby">🎨 Hobby</option>
+                <option value="other">✨ Other</option>
               </select>
               <select id="plan-timeline">
-                <option value="minggu ini">Minggu ini</option>
-                <option value="bulan ini">Bulan ini</option>
-                <option value="3 bulan">3 Bulan</option>
-                <option value="6 bulan">6 Bulan</option>
-                <option value="1 tahun">1 Tahun</option>
+                <option value="this week">This Week</option>
+                <option value="this month">This Month</option>
+                <option value="3 months">3 Months</option>
+                <option value="6 months">6 Months</option>
+                <option value="1 year">1 Year</option>
               </select>
-              <button type="submit">Tambah Goal</button>
+              <button type="submit">Add Goal</button>
             </div>
           </form>
         </section>
@@ -174,24 +167,24 @@
         </section>
       </div>
 
-      <!-- ═══════════════ TAB: HABIT TRACKER ═══════════════ -->
+      <!-- ═══ TAB: HABIT TRACKER ═══ -->
       <div class="tab-panel" id="tab-habit">
         <section class="form-section">
           <h2>🔥 Habit Tracker</h2>
           <form id="habit-form">
             <div class="input-row">
-              <input type="text" id="habit-input" placeholder="Nama kebiasaan baru..." required />
+              <input type="text" id="habit-input" placeholder="New habit name..." required />
               <select id="habit-icon">
-                <option value="💧">💧 Minum air</option>
-                <option value="📖">📖 Membaca</option>
-                <option value="🏃">🏃 Olahraga</option>
-                <option value="🧘">🧘 Meditasi</option>
-                <option value="✍️">✍️ Menulis</option>
-                <option value="🌙">🌙 Tidur cukup</option>
-                <option value="🥗">🥗 Makan sehat</option>
-                <option value="⭐">⭐ Lainnya</option>
+                <option value="💧">💧 Drink water</option>
+                <option value="📖">📖 Reading</option>
+                <option value="🏃">🏃 Exercise</option>
+                <option value="🧘">🧘 Meditation</option>
+                <option value="✍️">✍️ Writing</option>
+                <option value="🌙">🌙 Sleep well</option>
+                <option value="🥗">🥗 Eat healthy</option>
+                <option value="⭐">⭐ Other</option>
               </select>
-              <button type="submit">Tambah</button>
+              <button type="submit">Add</button>
             </div>
           </form>
         </section>
@@ -201,9 +194,89 @@
         </section>
       </div>
 
+      <!-- ═══ TAB: ABOUT ═══ -->
+      <div class="tab-panel" id="tab-about">
+        <section class="about-section">
+          <div class="about-hero">
+            <img src="Wanita dan sunflower.jpg.jpg" alt="About" class="about-img" />
+            <div class="about-hero-text">
+              <h2>🦋 Everyday, soulful notes</h2>
+              <p>A personal space to reflect, plan, and grow.</p>
+            </div>
+          </div>
+
+          <div class="about-content">
+            <div class="about-card">
+              <h3>📖 What is this?</h3>
+              <p>Soulful Notes is a free, aesthetic personal journaling web app designed for people who want to reflect on their days, track their moods, build good habits, and plan their life — all in one beautiful place.</p>
+              <p>No ads. No subscriptions. Just you and your thoughts.</p>
+            </div>
+
+            <div class="about-features">
+              <h3>✨ Features</h3>
+              <div class="feature-grid">
+                <div class="feature-item">
+                  <span class="feature-icon">📖</span>
+                  <div>
+                    <strong>Journal</strong>
+                    <p>Write daily entries with mood tracking. Your thoughts, saved forever.</p>
+                  </div>
+                </div>
+                <div class="feature-item">
+                  <span class="feature-icon">✅</span>
+                  <div>
+                    <strong>To-Do List</strong>
+                    <p>Manage tasks by priority. Stay on top of what matters.</p>
+                  </div>
+                </div>
+                <div class="feature-item">
+                  <span class="feature-icon">🌱</span>
+                  <div>
+                    <strong>Life Planning</strong>
+                    <p>Set goals across life areas and track your progress visually.</p>
+                  </div>
+                </div>
+                <div class="feature-item">
+                  <span class="feature-icon">🔥</span>
+                  <div>
+                    <strong>Habit Tracker</strong>
+                    <p>Build daily habits and maintain your streak week by week.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="about-card">
+              <h3>🔒 Your data is private</h3>
+              <p>All your data is stored securely in the cloud and tied to your account. Only you can see it. We don't sell or share your data with anyone.</p>
+            </div>
+
+            <div class="about-card">
+              <h3>💌 How to get started</h3>
+              <ol>
+                <li>Create a free account with your email</li>
+                <li>Confirm your email address</li>
+                <li>Start writing your first journal entry</li>
+                <li>Add habits you want to build</li>
+                <li>Set your life goals and track progress</li>
+              </ol>
+            </div>
+
+            <div class="about-creator">
+              <img src="Wanita Belajar.jpg.jpg" alt="Creator" class="creator-img" />
+              <div>
+                <h3>👩‍💻 About the Creator</h3>
+                <p>Hi! I'm <strong>Trisia Parera</strong>. I built this app because I believe journaling shouldn't feel like a chore — it should feel like a warm, quiet moment for yourself.</p>
+                <p>This project was built with love, curiosity, and a little help from AI. 🤍</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
     </main>
 
-    <!-- Modal Detail Jurnal -->
+    <!-- Journal Detail Modal -->
     <div id="modal" class="modal hidden">
       <div class="modal-content">
         <button class="close-btn" id="close-modal">✕</button>
@@ -214,15 +287,13 @@
       </div>
     </div>
 
-    <!-- Footer -->
     <footer>
-      <p>🌻📚 Tidak ada kata akhir untuk belajar 📚🌻</p>
+      <p>🌻📚 There is no end to learning 📚🌻</p>
       <p class="footer-credit">© 2025 Trisia Parera · Built with 🤍 &amp; AI</p>
     </footer>
 
   </div><!-- /#app -->
 
-  <!-- Loading overlay -->
   <div id="loading" class="loading-overlay hidden">
     <div class="loading-spinner">✦</div>
   </div>
