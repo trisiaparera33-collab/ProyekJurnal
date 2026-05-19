@@ -8,8 +8,6 @@ const ASSETS = [
   '/style.css',
   '/app.js',
   '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
   '/Wanita dan sunflower.jpg.jpg',
   '/Wanita Belajar.jpg.jpg',
   '/nuansa buku-buku.jpg.jpg'
