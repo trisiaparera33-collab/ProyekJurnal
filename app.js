@@ -7,9 +7,16 @@
 const SUPABASE_URL = 'https://umjurimjzkoondlzurwn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtanVyaW1qemtvb25kbHp1cnduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxNTExNDYsImV4cCI6MjA5NDcyNzE0Nn0.y1tjMavekMktPjtiThCSqUGrMxHvpHW7GmsO3hZ6u9o';
 
-// Supabase JS v2 via CDN (loaded inline below)
 const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    storageKey: 'soulful-notes-auth',
+    storage: window.localStorage,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  }
+});
 
 // ── Helpers ──────────────────────────────────────
 function escHtml(str) {

@@ -306,6 +306,22 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // Fallback: kalau CDN gagal load, tampilkan pesan error
+    window.addEventListener('load', () => {
+      if (typeof supabase === 'undefined') {
+        document.body.innerHTML = `
+          <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#fdf6f0;font-family:Georgia,serif;padding:2rem;text-align:center">
+            <div>
+              <p style="font-size:2rem">🦋</p>
+              <h2 style="color:#7a4f3a;margin:1rem 0">Connection failed</h2>
+              <p style="color:#b08070;margin-bottom:1.5rem">Could not connect to the server. Please check your internet connection and try again.</p>
+              <button onclick="location.reload()" style="padding:0.6rem 1.5rem;background:#7a4f3a;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer">Try Again</button>
+            </div>
+          </div>`;
+      }
+    });
+  </script>
   <script src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {

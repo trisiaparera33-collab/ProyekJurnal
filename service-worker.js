@@ -1,7 +1,5 @@
 // Soulful Notes — Service Worker
-// Caches core assets for offline support
-
-const CACHE_NAME = 'soulful-notes-v1';
+const CACHE_NAME = 'soulful-notes-v2';
 const ASSETS = [
   '/',
   '/index.html',
