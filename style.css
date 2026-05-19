@@ -685,6 +685,13 @@ footer {
   backdrop-filter: blur(4px);
 }
 
+.footer-credit {
+  font-size: 0.78rem;
+  color: #b08070;
+  margin-top: 0.4rem;
+  font-style: italic;
+}
+
 /* ── Mood Statistics ── */
 .mood-stats {
   display: flex;
